@@ -11,21 +11,12 @@ Model name is converted to lowercase for the collection name:
 - BlogPost -> "blogs" collection
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional, List, Literal
 
-# Example schemas (replace with your own):
-
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+class ProductVariant(BaseModel):
+    name: str = Field(..., description="Variant name, e.g., Size")
+    options: List[str] = Field(..., description="Available options for this variant")
 
 class Product(BaseModel):
     """
@@ -33,16 +24,44 @@ class Product(BaseModel):
     Collection name: "product" (lowercase of class name)
     """
     title: str = Field(..., description="Product title")
+    slug: str = Field(..., description="Unique slug for routing")
     description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    price: float = Field(..., ge=0, description="Base price in INR")
+    discount_percent: Optional[int] = Field(0, ge=0, le=90)
+    rating: float = Field(4.8, ge=0, le=5)
+    images: List[str] = Field(default_factory=list, description="Image URLs")
+    badges: List[str] = Field(default_factory=list)
+    variants: List[ProductVariant] = Field(default_factory=list)
+    featured: bool = Field(False)
+    category: str = Field("frames")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Personalization(BaseModel):
+    photo_url: Optional[str] = None
+    name: Optional[str] = None
+    message: Optional[str] = None
+    size: Optional[str] = None
+    light_color: Optional[str] = None
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class OrderItem(BaseModel):
+    product_slug: str
+    quantity: int = Field(1, ge=1)
+    unit_price: float = Field(..., ge=0)
+    personalization: Optional[Personalization] = None
+
+class CustomerInfo(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    pincode: Optional[str] = None
+
+class Order(BaseModel):
+    items: List[OrderItem]
+    subtotal: float
+    discount: float = 0
+    shipping: float = 0
+    total: float
+    payment_method: Literal["COD", "Prepaid"] = "COD"
+    customer: Optional[CustomerInfo] = None
+    status: Literal["pending", "confirmed", "shipped", "delivered"] = "pending"
